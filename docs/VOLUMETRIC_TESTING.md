@@ -1,151 +1,171 @@
-# Estrategia de Pruebas Volumétricas: Microservicio de Facturas
+# Documento de Estrategia: Pruebas Volumétricas y de Rendimiento
+**Proyecto:** Microservicio de Gestión de Facturas (FastAPI + SQL Server)
 
-Este documento define el plan estratégico para validar la escalabilidad, estabilidad y resiliencia de la API de facturas ante grandes volúmenes de datos y concurrencia masiva.
+## 1. Fundamentos: ¿Qué es una Prueba Volumétrica?
 
-## 1. Definiciones de Pruebas
+El propósito de este documento es definir la estrategia para evaluar el comportamiento del sistema no solo ante la concurrencia (usuarios), sino ante el crecimiento masivo de la persistencia de datos.
 
-A continuación se presenta la tabla comparativa para diferenciar el alcance de cada tipo de prueba:
+### 1.1 Definición
+Una **Prueba Volumétrica** consiste en someter a la aplicación a un volumen extremo de datos en su almacenamiento (base de datos). A diferencia de otras pruebas, el foco no es solo cuántas personas entran, sino cómo se comporta el motor de búsqueda y el sistema de archivos cuando las tablas pasan de miles a **cientos de millones de registros**.
 
-| Tipo de Prueba | Objetivo Principal | Volumen / Carga | Resultado Esperado |
+### 1.2 Diferenciación Técnica
+
+| Característica | Prueba de Carga (Load) | Prueba de Estrés (Stress) | Prueba Volumétrica (Volumetric) |
 | :--- | :--- | :--- | :--- |
-| **Carga (Load)** | Validar el comportamiento bajo la carga esperada de producción. | 1.000 concurrentes (Nominal). | Respuesta dentro de SLAs (p95 < 200ms). |
-| **Estrés (Stress)** | Encontrar el punto de ruptura del sistema. | 10.000+ concurrentes (Hasta el fallo). | Identificación del componente que colapsa primero. |
-| **Volumétrica** | Medir el rendimiento cuando la DB crece masivamente. | 100M+ de registros en tabla `invoices`. | Estabilidad en tiempos de respuesta a pesar del tamaño de la data. |
+| **Foco Principal** | Usuarios concurrentes normales. | Límite de ruptura del sistema. | Volumen de datos persistidos. |
+| **Objetivo** | Verificar cumplimiento de SLAs. | Evaluar recuperación ante fallos. | Verificar eficiencia de índices y almacenamiento. |
+| **Escenario común** | 100 usuarios navegando. | Salto de 1.000 a 50.000 usuarios de golpe. | 100 millones de facturas en la tabla `invoices`. |
+| **Métrica Clave** | Tiempo de respuesta promedio. | Disponiblidad (Uptime). | Latencia de Query e I/O de Disco. |
 
 ---
 
-## 2. Escenario de Prueba Realista
+## 2. Diseño del Escenario de Pruebas
 
-Se simulará un cierre de mes donde múltiples sistemas ERP registran facturas simultáneamente y el equipo contable realiza búsquedas masivas.
+### 2.1 Caso de Uso Realista: "Cierre Fiscal de Multinacional"
+Imaginemos una empresa de retail masivo procesando el cierre de año. Todos los puntos de venta están enviando facturas al microservicio simultáneamente (escritura) mientras el equipo de auditoría realiza búsquedas por nombre de cliente para conciliación (lectura).
 
-- **Volumen de Base de Datos Base:** 50.000.000 registros pre-insertados.
-- **Tasa de Inserción Objetivo:** 2.000 facturas/segundo (TPS).
-- **Concurrencia:** 5.000 usuarios virtuales simulados.
-- **Duración Total:** 1 hora.
-
----
-
-## 3. Métricas y KPIs (Umbrales de Aceptación)
-
-| Métrica | KPI (Umbral Máximo/Mínimo) | Descripción |
-| :--- | :--- | :--- |
-| **Latencia p95** | < 250 ms | El 95% de las peticiones deben ser rápidas. |
-| **Latencia p99** | < 800 ms | Control de "long-tail" latencies en búsquedas pesadas. |
-| **Error Rate** | < 0.5% | Porcentaje de fallos HTTP (5xx) permitidos. |
-| **Throughput** | > 2.500 req/sec | Capacidad total de procesamiento del cluster. |
-| **CPU/RAM DB** | < 75% | Evitar saturación del motor SQL Server. |
+### 2.2 Volúmenes Definidos
+*   **Volumen de Datos (Persistencia):** Se poblará la base de datos con **100.000.000 (cien millones)** de facturas históricas antes de iniciar.
+*   **Tasa de Transacciones (Throughput):** 
+    *   **Escritura:** 1.500 `POST /invoice` por segundo.
+    *   **Lectura Búsqueda:** 800 `GET /invoice/search` por segundo (con wildcards).
+    *   **Lectura Puntual:** 1.000 `GET /invoice/{id}` por segundo.
 
 ---
 
-## 4. Estrategia de Ejecución por Fases
+## 3. Métricas, KPIs y Herramientas
 
-| Fase | Duración | Carga (Usuarios) | Propósito |
-| :--- | :--- | :--- | :--- |
-| **Warmup** | 5 min | 0 -> 500 | Calentamiento de connections pool y caches. |
-| **Ramp-up** | 10 min | 500 -> 5.000 | Incremento gradual para observar degradación lineal. |
-| **Sustained Load** | 35 min | 5.000 | Medición de estabilidad y fugas de memoria. |
-| **Spike** | 5 min | 12.000 | Simulación de ráfaga extrema inesperada. |
-| **Teardown** | 5 min | 5.000 -> 0 | Liberación de recursos y consolidación de logs. |
+### 3.1 Indicadores a Medir
+1.  **Tiempos de Respuesta (Latencia):** p95 y p99. Indican que el 95% y 99% de las facturas se procesan en el tiempo esperado.
+2.  **Uso de CPU (API y DB):** El motor SQL Server no debe superar el 80% de forma sostenida para evitar encolamiento de hilos.
+3.  **Consumo de RAM:** Identificar posibles *memory leaks* en FastAPI al procesar listas grandes de resultados.
+4.  **Tasa de Errores (Error Rate):** Porcentaje de respuestas 5xx o Timeouts.
+5.  **Throughput:** Cantidad de transacciones exitosas por segundo aprovechando el pool de conexiones.
+6.  **I/O Wait (Disco):** Tiempo que pasa la base de datos esperando a que el disco escriba la data (crítico en volumetría).
+
+### 3.2 Herramientas Sugeridas
+*   **Generación de Carga:** `Locust` (Python-based) por su capacidad de simular usuarios asíncronos distribuidos.
+*   **Monitoreo de Infraestructura:** `AWS CloudWatch` para métricas de CPU/RAM de contenedores y base de datos.
+*   **Tracing Distribuido:** `AWS X-Ray` o `Jaeger` para ver el tiempo que toma específicamente cada Stored Procedure.
+*   **Perfilamiento de DB:** `SQL Server Profiler` o `Query Store` para identificar planes de ejecución costosos sobre tablas grandes.
 
 ---
 
-## 5. Pseudo-implementación con Locust
+## 4. Estrategia para la Ejecución
+
+### 4.1 Planificación
+1.  **Fase de Preparación (Data Seeding):** Uso de scripts de Python o Stored Procedures de carga masiva para generar los 100M de registros.
+2.  **Configuración del Entorno:** Aislar el entorno de pruebas para que sea un espejo de producción (mismas capacidades de IOPS en disco).
+3.  **Ejecución Gradual:** Ramp-up de usuarios para identificar el punto donde la latencia de DB empieza a subir exponencialmente.
+
+### 4.2 Simulación de Alto Volumen
+*   **Simulación de Datos:** Poblar la tabla con datos aleatorios pero con distribuciones de nombres de clientes realistas para probar la selectividad del índice.
+*   **Simulación de Peticiones:** Utilizar un cluster de workers de **Locust** en contenedores independientes (ECS Fargate) para generar tráfico desde fuera de la red de la aplicación.
+
+### 4.3 Criterios de Éxito o Fallo
+*   **Éxito:**
+    *   Latencia p95 < 300ms en inserciones.
+    *   Búsquedas por cliente < 1 segundo a pesar de los 100M de registros.
+    *   0.0% de pérdida de datos.
+*   **Fallo:**
+    *   Error rate > 1.0%.
+    *   Degradación total del sistema por bloqueos de tabla (Deadlocks).
+    *   Agotamiento de memoria en la API al serializar JSONs grandes.
+
+---
+
+## 5. Cuellos de Botella y Soluciones Sugeridas
+
+### 5.1 Problemas Esperados
+1.  **Fragmentación de Índices:** Con 100M de registros e inserciones constantes, el índice no-clustered en `client_name` se fragmentará, degradando las búsquedas.
+2.  **Bloqueos de Página (Page Latching):** SQL Server puede bloquear páginas enteras de la tabla durante inserciones masivas, frenando las lecturas.
+3.  **Serialización JSON Lenta:** Pydantic podría tomar mucho tiempo convirtiendo 1.000 filas de la DB a JSON en el endpoint de búsqueda.
+
+### 5.2 Soluciones Propuestas
+1.  **Optimización de Índices:** Implementar una política de mantenimiento (Rebuild/Reorganize) y usar un `FILLFACTOR` del 80% para dejar espacio a nuevas inserciones.
+2.  **Lectura Sucia (NOLOCK):** Si la lógica de negocio lo permite, usar `SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED` en el SP de búsqueda para evitar que las lecturas esperen a las escrituras.
+3.  **Paginación Obligatoria:** Limitar el SP `sp_SearchInvoicesByClient` para que nunca devuelva más de 50 registros por vez (`OFFSET` / `FETCH NEXT`).
+4.  **Uso de Memoria/Cache:** Implementar una capa de caché (Redis) para los nombres de clientes más buscados, evitando ir a la tabla de 100M para consultas repetitivas.
+
+---
+
+## 6. Arquitectura de Prueba (Diagrama en AWS)
+
+```puml
+@startuml
+skinparam actorStyle awesome
+skinparam componentStyle uml2
+
+title Arquitectura de Pruebas Volumétricas en AWS
+
+package "Load Generation (External)" {
+    actor "Locust Master" as master
+    actor "Locust Workers" as workers
+}
+
+cloud "Amazon Web Services (AWS)" {
+    
+    node "Entry Point" {
+        [API Gateway] as apigw
+        [Application Load Balancer] as alb
+    }
+
+    package "Compute Layer (Fargate)" {
+        [FastAPI Instances] as api
+    }
+
+    package "Messaging" {
+        queue "SQS / RabbitMQ" as queue
+    }
+
+    database "RDS SQL Server" as db {
+        [Stored Procedures]
+        [100M Records]
+    }
+
+    package "Observability" {
+        [CloudWatch] as cw
+        [AWS X-Ray] as xray
+    }
+
+    workers -> apigw : HTTPS/REST
+    apigw -> alb
+    alb -> api
+    api -> queue : Post (Async)
+    queue -> api : Worker Process
+    api -> db : EXEC sp_CreateInvoice
+    
+    db ..> cw : Metrics
+    api ..> xray : Tracing
+    api ..> cw : Logs
+}
+
+master -[bold]-> workers : Deploy & Control
+@enduml
+```
+
+---
+
+## 7. Pseudo-Inyección de Carga (Locust)
 
 ```python
-from locust import HttpUser, task, between, events
-import random
+from locust import HttpUser, task, between
 
-class InvoiceVolumetricUser(HttpUser):
-    wait_time = between(0.5, 2)
-    token = None
-
-    def on_start(self):
-        """Autenticación inicial para obtener el Bearer Token."""
-        auth_response = self.client.post("/auth/token", data={
-            "username": "admin",
-            "password": "password123"
-        })
-        self.token = auth_response.json()["access_token"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
-
-    @task(10)  # Frecuencia alta para escritura
-    def create_invoice(self):
-        inv_num = f"VOL-{random.randint(1000000, 9999999)}"
-        payload = {
-            "invoice_number": inv_num,
-            "client_name": "Corporativo " + str(random.randint(1, 1000)),
-            "client_id": f"NIT-{random.randint(1000, 9999)}",
-            "total_amount": round(random.uniform(100.0, 50000.0), 2),
-            "issue_date": "2026-03-01",
-            "status": "PENDING"
-        }
-        self.client.post("/invoice/", json=payload, headers=self.headers, name="POST /invoice")
+class VolumetricUser(HttpUser):
+    wait_time = between(0.1, 0.5) # Simula peticiones muy rápidas
 
     @task(5)
-    def search_by_client(self):
-        # Búsqueda parcial que fuerza el uso del Indice IX_Invoices_ClientName
-        clients = ["Acme", "Globex", "Sura", "Tech"]
-        query = random.choice(clients)
-        self.client.get(f"/invoice/search?client={query}", headers=self.headers, name="GET /invoice/search")
+    def stress_insert(self):
+        self.client.post("/invoice/", json={
+            "invoice_number": "STRESS-TEST",
+            "client_name": "Empresa Grande S.A.",
+            "client_id": "900-123",
+            "total_amount": 5000.0,
+            "issue_date": "2026-02-27"
+        }, headers={"Authorization": "Bearer ..."})
 
     @task(2)
-    def get_by_id(self):
-        # Consulta por PK (Extremadamente rápida en SQL Server)
-        inv_id = random.randint(1, 100000)
-        self.client.get(f"/invoice/{inv_id}", headers=self.headers, name="GET /invoice/{id}")
+    def volumetric_search(self):
+        # Esta tarea evalúa el rendimiento del índice IX_Invoices_ClientName
+        self.client.get("/invoice/search?client=Empresa", headers={"Authorization": "Bearer ..."})
 ```
-
----
-
-## 6. Arquitectura de Infraestructura de Prueba (AWS)
-
-```text
-[ Locust Cluster (Distributed) ]
-           |
-           v (HTTPS)
-[ AWS API Gateway ] <---> [ AWS WAF (Web App Firewall) ]
-           |
-           v
-[ Application Load Balancer (ALB) ]
-           |
-           +-----> [ ECS Fargate Service (API Cluster Auto-scaled) ]
-           |           |
-           |           v (Asynchronous Load via SQS)
-           |       [ SQS Queue: invoice-load-buffer ]
-           |           |
-           |           v (Consumers)
-           |       [ RabbitMQ / Celery Workers ] ----+
-           |                                         |
-           +-----------------------------------------+
-                               |
-                               v (Stored Procedures ONLY)
-                  [ RDS SQL Server (High Memory Instance) ]
-                               |
-                               +--> [ AWS X-Ray: Tracing ]
-                               +--> [ CloudWatch: Metrics/Logs ]
-```
-
-### Integración de Componentes:
-- **SQS/RabbitMQ:** Actúan como amortiguador (buffer) para absorber picos de tráfico de escritura, evitando que la base de datos se bloquee por exceso de conexiones concurrentes.
-- **AWS X-Ray:** Permite visibilizar en qué Stored Procedure o capa de la red se está perdiendo tiempo durante las peticiones de alta carga.
-
----
-
-## 7. Cuellos de Botella Esperados y Mitigaciones
-
-1.  **Saturación del Pool de Conexiones:**
-    - *Problema:* El motor SQL Server alcanza el `Max Connections`.
-    - *Solución:* Implementar un mediador como **PgBouncer** (o equivalente de SQL Server) y aumentar el `pool_size` en SQLAlchemy.
-2.  **Table Scan en Búsquedas LIKE:**
-    - *Problema:* `client_name LIKE '%name%'` no usa el índice eficientemente al inicio de la cadena.
-    - *Solución:* Cambiar a **Full-Text Search (FTS)** en SQL Server o implementar **ElasticSearch** como índice secundario.
-3.  **Mora en la Escritura (Deadlocks):**
-    - *Problema:* Alta tasa de `INSERT` concurrentes genera bloqueos en las páginas de datos.
-    - *Solución:* Utilizar `SET NOCOUNT ON` en SPs y optimizar el `FILLFACTOR` de los índices.
-
----
-
-## 8. Criterios de Éxito / Fallo
-
-- **ÉXITO:** El sistema mantiene el Throughput > 2.000 TPS durante 30 minutos constantes sin que el p95 exceda los 350ms.
-- **FALLO:** El Error Rate supera el 1% en cualquier fase sostenida o la base de datos entra en estado de `Deadlock` impidiendo lecturas.
