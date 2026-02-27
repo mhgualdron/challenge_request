@@ -1,10 +1,10 @@
-# Invoice Management System — Challenge Técnico Backend - AI
+# Invoice Management System - Challenge Técnico Backend
 
 Esta solución representa una implementación robusta y escalable para la gestión de facturas, diseñada bajo los más altos estándares de ingeniería de software. El proyecto integra una arquitectura limpia (**Clean Architecture**), principios **SOLID** y una estrategia de persistencia de datos de alto rendimiento basada en **Stored Procedures**.
 
 ---
 
-## 🏛️ Arquitectura y Decisiones de Diseño
+## Arquitectura y Decisiones de Diseño
 
 La aplicación se rige por un enfoque **Feature-Based** con un núcleo (**Core**) transversal, garantizando una separación de responsabilidades absoluta:
 
@@ -16,7 +16,7 @@ La aplicación se rige por un enfoque **Feature-Based** con un núcleo (**Core**
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 | Componente | Tecnología |
 | :--- | :--- |
@@ -31,7 +31,7 @@ La aplicación se rige por un enfoque **Feature-Based** con un núcleo (**Core**
 
 ---
 
-## 🚀 Despliegue y Configuración
+## Despliegue y Configuración
 
 ### 1. Inicialización del Entorno
 El proyecto está completamente containerizado para asegurar la paridad entre entornos.
@@ -45,14 +45,22 @@ docker-compose up -d --build
 ### 2. Ciclo de Vida de Base de Datos
 Las migraciones están gestionadas por **Alembic**, divididas en esquemas, índices y lógica procedural.
 
+> [!IMPORTANT]  
+> SQL Server requiere que la base de datos exista antes de que Alembic pueda conectarse. Ejecute los siguientes comandos en orden:
+
 ```bash
-# Ejecutar migraciones y poblar datos semilla
+# 1. Crear la base de datos en el contenedor
+docker exec -it mssql_db /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P Challenge123! \
+  -Q "CREATE DATABASE challenge_db" -C
+
+# 2. Ejecutar migraciones y poblar datos semilla
 docker exec -it invoice_api poetry run alembic upgrade head
 ```
 
 ---
 
-## 📖 Interfaz de Programación (API)
+## Interfaz de Programación (API)
 
 ### Autenticación
 Todos los endpoints de facturas requieren un token JWT válido.
@@ -68,7 +76,7 @@ Todos los endpoints de facturas requieren un token JWT válido.
 
 ---
 
-## 📊 Documentación Avanzada
+## Documentación Avanzada
 
 Este challenge se complementa con dos análisis técnicos profundos:
 
@@ -77,7 +85,7 @@ Este challenge se complementa con dos análisis técnicos profundos:
 
 ---
 
-## 🧪 Calidad y Verificación
+## Calidad y Verificación
 
 El proyecto mantiene una suite de pruebas automatizadas que validan tanto la integridad de los esquemas como la lógica de negocio:
 
