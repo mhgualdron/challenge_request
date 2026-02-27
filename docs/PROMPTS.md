@@ -74,6 +74,13 @@ Para validar la efectividad de la optimización, se realizaron pruebas de ejecuc
 ### Resultado Prompt Legacy (Ejecución Real)
 > "La póliza exige notificar al banco con al menos 30 días de anticipación cualquier revocación o modificación, y reportar siniestros dentro de 30 días; la aseguradora informará al banco en 10 días hábiles. En caso de mora, se avisará al beneficiario con hasta 30 días de antelación manteniendo la cobertura. Ofrece un valor asegurado de $98.500.000 por fallecimiento y cubre muerte por cualquier causa e incapacidad total y permanente (≥50%) desde el inicio, incluyendo eventos como homicidio, suicidio o terrorismo. Inicia vigencia a las 24:00 del día de expedición, se paga anualmente por cobro bancario, puede cederse con notificación y sus exclusiones y límites están en el clausulado y carátula."
 
+
+
+### Captura de pantalla
+
+
+![Resultado Prompt Legacy en ChatGPT](image.png)
+
 **Análisis:** Es un párrafo denso. Aunque contiene la información, es difícil de procesar rápidamente por un sistema de auditoría o un analista de riesgos. No separa visualmente las responsabilidades legales.
 
 ### Resultado Prompt Mejorado (Ejecución Real)
@@ -95,6 +102,13 @@ Para validar la efectividad de la optimización, se realizaron pruebas de ejecuc
 *   **Vigencia:** desde las 24:00 del día de expedición. 
 *   **Permanencia y Exclusiones:** Ver clausulado general. 
 *   **Cesión:** Posible por titularización, previa notificación.
+
+
+---
+
+### Captura de pantalla
+
+![Resultado Prompt Optimizado en ChatGPT](image-1.png)
 
 ---
 
