@@ -82,10 +82,10 @@ Imaginemos una empresa de retail masivo procesando el cierre de año. Todos los 
 3.  **Serialización JSON Lenta:** Pydantic podría tomar mucho tiempo convirtiendo 1.000 filas de la DB a JSON en el endpoint de búsqueda.
 
 ### 5.2 Soluciones Propuestas
-1.  **Optimización de Índices:** Implementar una política de mantenimiento (Rebuild/Reorganize) y usar un `FILLFACTOR` del 80% para dejar espacio a nuevas inserciones.
-2.  **Lectura Sucia (NOLOCK):** Si la lógica de negocio lo permite, usar `SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED` en el SP de búsqueda para evitar que las lecturas esperen a las escrituras.
-3.  **Paginación Obligatoria:** Limitar el SP `sp_SearchInvoicesByClient` para que nunca devuelva más de 50 registros por vez (`OFFSET` / `FETCH NEXT`).
-4.  **Uso de Memoria/Cache:** Implementar una capa de caché (Redis) para los nombres de clientes más buscados, evitando ir a la tabla de 100M para consultas repetitivas.
+1.  **Estrategia de Particionamiento (Horizontal Partitioning):** Dividir la tabla `invoices` en particiones físicas basadas en el `issue_date` (mensual o anual). Esto permite al motor hacer "Partition Elimination", escaneando solo los archivos de datos relevantes.
+2.  **Aislamiento por Snapshot (RCSI):** Activar `READ_COMMITTED_SNAPSHOT` a nivel de base de datos. A diferencia de `NOLOCK` (que puede leer datos inconsistentes), RCSI permite que las lecturas no bloqueen a las escrituras usando versiones de filas en `tempdb`, garantizando consistencia y alto throughput.
+3.  **Mantenimiento de Índices:** Implementar un plan de mantenimiento nocturno para `REBUILD` de índices con un `FILLFACTOR` del 80%, reduciendo el "Page Splitting" durante las inserciones masivas del día.
+4.  **Paginación a Nivel de Procedimiento:** Modificar el SP `sp_SearchInvoicesByClient` para soportar `OFFSET/FETCH NEXT`, evitando que la API sature su memoria al intentar procesar miles de registros de un cliente muy grande.
 
 ---
 

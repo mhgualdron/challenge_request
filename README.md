@@ -14,6 +14,13 @@ La aplicación se rige por un enfoque **Feature-Based** con un núcleo (**Core**
 *   **Inversion of Control (IoC):** Implementación de **Dependency Injection** nativa de FastAPI para desacoplar los routers de las implementaciones concretas de los repositorios.
 *   **Domain-Driven Exceptions:** Gestión de errores centralizada mediante excepciones de dominio mapeadas a respuestas HTTP semánticas.
 
+## Racional de Arquitectura Senior
+
+Para este desafío, se han priorizado tres pilares fundamentales:
+1.  **Escalabilidad Vertical (DB):** El uso de **Stored Procedures** permite mover la lógica de datos cerca de los mismos, reduciendo la latencia de red y aprovechando la optimización de planes de ejecución de SQL Server.
+2.  **Mantenibilidad (Clean Architecture):** La separación en capas asegura que el núcleo de negocio sea agnóstico a cambios en la base de datos o el framework web.
+3.  **Seguridad de Grado Empresarial:** Implementación de **JWT con HTTPBearer** y validación estricta de esquemas con **Pydantic v2**.
+
 ---
 
 ## Stack Tecnológico
