@@ -7,7 +7,13 @@ from app.core.exceptions import DomainException, domain_exception_handler, globa
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Invoice Management API",
-        description="Microservicio para la gestión de facturas usando Stored Procedures y SQL Server",
+        description="""
+        ### Guía de Inicio Rápido
+        Para probar los endpoints protegidos:
+        1. Diríjase al endpoint **POST /auth/token** abajo y ejecútelo con `admin` / `password123`.
+        2. Copie el valor de **access_token**.
+        3. Haga clic en el botón **Authorize** arriba y pegue el token en el campo **Value**.
+        """,
         version="1.0.0"
     )
 

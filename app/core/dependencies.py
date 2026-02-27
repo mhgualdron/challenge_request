@@ -7,13 +7,16 @@ from app.core.exceptions import AuthenticationError
 from app.invoices.repository_impl import InvoiceRepositoryImpl
 from app.invoices.service import InvoiceService
 
-reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="auth/token")
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security_scheme = HTTPBearer()
 
 def get_db():
     """Dependency to get a DB connection."""
     yield from get_connection()
 
-def get_current_user(token: str = Depends(reusable_oauth2)):
+def get_current_user(auth: HTTPAuthorizationCredentials = Depends(security_scheme)):
+    token = auth.credentials
     payload = security.decode_access_token(token)
     if not payload:
         raise AuthenticationError("Could not validate credentials")
