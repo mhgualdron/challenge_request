@@ -55,7 +55,7 @@ docker exec -it mssql_db /opt/mssql-tools18/bin/sqlcmd \
   -Q "CREATE DATABASE challenge_db" -C
 
 # 2. Ejecutar migraciones y poblar datos semilla
-docker exec -it invoice_api poetry run alembic upgrade head
+docker exec -it invoice_api alembic upgrade head
 ```
 
 ---
