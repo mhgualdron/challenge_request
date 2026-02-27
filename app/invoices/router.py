@@ -17,17 +17,6 @@ def create_invoice(
     """
     return service.create_invoice(invoice_in)
 
-@router.get("/{id}", response_model=InvoiceResponse)
-def get_invoice_by_id(
-    id: int,
-    service: InvoiceService = Depends(get_invoice_service),
-    current_user: str = Depends(get_current_user)
-):
-    """
-    Obtener una factura por su ID.
-    """
-    return service.get_invoice(id)
-
 @router.get("/search", response_model=List[InvoiceResponse])
 def search_invoices_by_client(
     client: str,
@@ -38,3 +27,14 @@ def search_invoices_by_client(
     Buscar facturas por nombre de cliente.
     """
     return service.search_invoices(client)
+
+@router.get("/{id}", response_model=InvoiceResponse)
+def get_invoice_by_id(
+    id: int,
+    service: InvoiceService = Depends(get_invoice_service),
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Obtener una factura por su ID.
+    """
+    return service.get_invoice(id)
