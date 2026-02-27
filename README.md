@@ -34,7 +34,7 @@ La aplicación se rige por un enfoque **Feature-Based** con un núcleo (**Core**
 ## Despliegue y Configuración
 
 ### 1. Inicialización del Entorno
-El proyecto está completamente containerizado para asegurar la paridad entre entornos.
+El proyecto está completamente containerizado. Se incluye un archivo `.env` ya configurado con los parámetros necesarios para el despliegue inmediato. Si desea ver la estructura o realizar cambios, consulte el archivo `.env.example`.
 
 ```bash
 # Construir e iniciar servicios (Database & API)
@@ -50,6 +50,7 @@ Las migraciones están gestionadas por **Alembic**, divididas en esquemas, índi
 
 ```bash
 # 1. Crear la base de datos en el contenedor
+# (Utiliza la contraseña 'Challenge123!' definida en el .env)
 docker exec -it mssql_db /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P Challenge123! \
   -Q "CREATE DATABASE challenge_db" -C

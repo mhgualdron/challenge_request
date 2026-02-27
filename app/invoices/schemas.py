@@ -22,7 +22,21 @@ class InvoiceBase(BaseModel):
         return v
 
 class InvoiceCreate(InvoiceBase):
-    pass
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "invoice_number": "INV-2024-001",
+                "client_name": "Corporacion Acme S.A.",
+                "client_id": "NIT-900123456-7",
+                "total_amount": 1500000.50,
+                "currency": "COP",
+                "issue_date": "2024-03-01",
+                "due_date": "2024-04-01",
+                "status": "PENDING",
+                "description": "Servicios de consultoria tecnica Q1"
+            }
+        }
+    )
 
 class InvoiceResponse(InvoiceBase):
     id: int
