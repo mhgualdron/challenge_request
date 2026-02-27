@@ -60,19 +60,37 @@ docker exec -it invoice_api poetry run alembic upgrade head
 
 ---
 
+## Acceso y Seguridad
+
+El sistema utiliza **OAuth2 con JWT (JSON Web Tokens)** para proteger los recursos. Todos los endpoints de gestión de facturas requieren una cabecera de autorización válida.
+
+### Credenciales de Acceso (Entorno de Desarrollo)
+Para facilitar las pruebas, se ha configurado un usuario administrador por defecto:
+- **Usuario:** `admin`
+- **Contraseña:** `password123`
+
+### Procedimiento de Autenticación
+1. Obtener el token enviando las credenciales al endpoint de autenticación:
+   ```bash
+   curl -X POST "http://localhost:8000/auth/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=admin&password=password123"
+   ```
+2. Utilice el `access_token` recibido en las peticiones a la API de facturas:
+   ```bash
+   Authorization: Bearer <su_token_aqui>
+   ```
+
+---
+
 ## Interfaz de Programación (API)
 
-### Autenticación
-Todos los endpoints de facturas requieren un token JWT válido.
-- **Login:** `POST /auth/token` (Credentials: `admin` / `password123`)
+La documentación interactiva completa (Swagger UI) está disponible en: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Catálogo de Endpoints
-- **Operaciones de Factura:**
-    - `POST /invoice/` - Registro integral de factura.
-    - `GET /invoice/{id}` - Recuperación de registro por PK.
-    - `GET /invoice/search?client={name}` - Búsqueda optimizada por cliente (LIKE).
-
-*Documentación interactiva disponible en:* [http://localhost:8000/docs](http://localhost:8000/docs)
+### Catálogo de Endpoints Principales
+- **POST /invoice/**: Registro integral de una nueva factura.
+- **GET /invoice/{id}**: Recuperación de un registro específico por su identificador único.
+- **GET /invoice/search?client={name}**: Búsqueda filtrada por nombre de cliente utilizando el procedimiento almacenado optimizado.
 
 ---
 
@@ -87,10 +105,22 @@ Este challenge se complementa con dos análisis técnicos profundos:
 
 ## Calidad y Verificación
 
-El proyecto mantiene una suite de pruebas automatizadas que validan tanto la integridad de los esquemas como la lógica de negocio:
+El proyecto incluye una suite de pruebas para asegurar la integridad de la lógica de negocio y los contratos de la API:
 
 ```bash
-# Ejecución de tests unitarios e integración
+# Ejecución de pruebas unitarias y de integración
 export PYTHONPATH="."
 poetry run pytest
 ```
+
+---
+
+## Propuestas de Mejora y Escalabilidad
+
+Tras la implementación inicial, se identifican las siguientes oportunidades para robustecer la solución en un entorno de producción de alta demanda:
+
+1. **Capa de Caché Distribuida:** Implementar **Redis** para almacenar los resultados de búsquedas frecuentes por cliente, reduciendo la carga de lectura sobre SQL Server.
+2. **Procesamiento Asíncrono de Escritura:** Introducir un broker de mensajería (como **RabbitMQ** o **Amazon SQS**) para encolar la creación de facturas. Esto permitiría desacoplar la API del tiempo de respuesta de la base de datos y manejar picos de tráfico.
+3. **Observabilidad Avanzada:** Integrar logs estructurados y métricas personalizadas (Prometheus/Grafana) para monitorear el rendimiento de los Stored Procedures en tiempo real.
+4. **Seguridad Robusta:** Implementar **Refresh Tokens** y rotación de claves secretas, además de integrar un proveedor de identidad modular (IdP) para una gestión de usuarios más compleja.
+5. **Estrategia de Particionamiento:** Para volúmenes superiores a los 100 millones de registros, se sugiere evaluar el particionamiento de tablas en SQL Server basado en rangos de fechas (Issue Date).
