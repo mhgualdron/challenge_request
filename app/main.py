@@ -1,7 +1,33 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.invoices.router import router as invoice_router
+from app.auth.router import router as auth_router
+from app.core.exceptions import DomainException, domain_exception_handler, global_exception_handler
 
-app = FastAPI(title="Invoice API")
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Invoice Management API",
+        description="Microservicio para la gestión de facturas usando Stored Procedures y SQL Server",
+        version="1.0.0"
+    )
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Invoice API"}
+    # CORS configuration
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Register Domain Exception Handlers
+    app.add_exception_handler(DomainException, domain_exception_handler)
+    app.add_exception_handler(Exception, global_exception_handler)
+
+    # Register Routers
+    app.include_router(auth_router)
+    app.include_router(invoice_router)
+
+    return app
+
+app = create_app()
